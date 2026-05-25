@@ -306,6 +306,10 @@ body{background:var(--bg);color:var(--txt);font-family:var(--fm);min-height:100v
 
 <!-- PREVISÃO -->
 <div class="panel" id="panel-previsao">
+  <div style="display:flex;gap:6px;margin-bottom:14px">
+    <button id="btn-ano-2026" class="mes-btn active" onclick="setPrevisaoAno(2026)">2026</button>
+    <button id="btn-ano-2027" class="mes-btn" onclick="setPrevisaoAno(2027)">2027</button>
+  </div>
   <div class="chart-wrap"><svg id="fluxo-svg" height="160"></svg></div>
   <div class="cal-grid" id="cal-grid"></div>
 </div>
@@ -367,6 +371,7 @@ let state = {dividas:[],fixas:[],variaveis:[],renda:[],recorrentes:[],historico:
 let currentModal = null, editingId = null;
 let varMesFiltro = mesAtual();
 let renMesFiltro = mesAtual();
+let previsaoAno = new Date().getFullYear();
 let confirmCb = null;
 let syncTimeout = null;
 
@@ -626,30 +631,40 @@ function renderDestino(){
 }
 
 // ── PREVISÃO ───────────────────────────────────────────────────────────────────
+function setPrevisaoAno(ano){
+  previsaoAno=ano;
+  document.querySelectorAll('[id^="btn-ano-"]').forEach(b=>b.classList.remove('active'));
+  const btn=document.getElementById('btn-ano-'+ano);
+  if(btn)btn.classList.add('active');
+  renderPrevisao();
+}
+
 function renderPrevisao(){
   const mes=mesAtual();
+  const mesesAno=Array.from({length:12},(_,i)=>`${previsaoAno}-${String(i+1).padStart(2,'0')}`);
   const cal=document.getElementById('cal-grid');
-  cal.innerHTML=MESES_2026.map((m,i)=>{
+  cal.innerHTML=mesesAno.map((m,i)=>{
     const ren=rendaDoMes(m);
     const dep=despesasDoMes(m);
     const sal=ren-dep;
     const isAtual=m===mes;
     return `<div class="cal-mes ${isAtual?'atual':''}" onclick="abrirDetalhe('${m}')"><div class="cal-mes-nome">${MESES_FULL[i]}</div><div class="cal-mes-row"><span>Renda</span><span style="color:var(--ok)">${fmt(ren)}</span></div><div class="cal-mes-row"><span>Despesas</span><span style="color:var(--danger)">${fmt(dep)}</span></div><div class="cal-saldo"><span>Saldo</span><span style="color:${sal>=0?'var(--ok)':'var(--danger)'}">${fmt(sal)}</span></div></div>`;
   }).join('');
-  renderChart();
+  renderChart(mesesAno);
 }
 
-function renderChart(){
+function renderChart(mesesAno){
   const svg=document.getElementById('fluxo-svg');
   if(!svg)return;
-  const W=Math.max(700,MESES_2026.length*56+80);
+  if(!mesesAno)mesesAno=Array.from({length:12},(_,i)=>`${previsaoAno}-${String(i+1).padStart(2,'0')}`);
+  const W=Math.max(700,mesesAno.length*56+80);
   const H=160;
   svg.setAttribute('width',W);svg.setAttribute('height',H);
-  const data=MESES_2026.map(m=>({ren:rendaDoMes(m),dep:despesasDoMes(m)}));
+  const data=mesesAno.map(m=>({ren:rendaDoMes(m),dep:despesasDoMes(m)}));
   const maxV=Math.max(...data.map(d=>Math.max(d.ren,d.dep)),1);
   const pad={l:50,r:20,t:10,b:30};
   const cW=W-pad.l-pad.r;const cH=H-pad.t-pad.b;
-  const bW=Math.floor(cW/MESES_2026.length);
+  const bW=Math.floor(cW/mesesAno.length);
   const bPad=6;
   let svgHtml='';
   // axis
