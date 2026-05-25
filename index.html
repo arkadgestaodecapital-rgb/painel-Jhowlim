@@ -291,6 +291,7 @@ body{background:var(--bg);color:var(--txt);font-family:var(--fm);min-height:100v
 <div class="panel" id="panel-renda">
   <div class="sec">
     <div class="sec-hdr"><div class="sec-title">Entradas Avulsas</div><button class="btn-add" onclick="openModal('renda')">+ Nova</button></div>
+    <div class="mes-filtro" id="ren-filtro"></div>
     <div id="lista-ren"></div>
   </div>
   <div class="sec">
@@ -365,6 +366,7 @@ const LOCAL_KEY = 'jhowlim-finance-v1';
 let state = {dividas:[],fixas:[],variaveis:[],renda:[],recorrentes:[],historico:[]};
 let currentModal = null, editingId = null;
 let varMesFiltro = mesAtual();
+let renMesFiltro = mesAtual();
 let confirmCb = null;
 let syncTimeout = null;
 
@@ -583,24 +585,16 @@ function setVarMes(m){varMesFiltro=m;renderVariaveis();}
 
 // ── RENDA ──────────────────────────────────────────────────────────────────────
 function renderRenda(){
+  const filtroEl=document.getElementById('ren-filtro');
+  const ano=new Date().getFullYear();
+  const meses=Array.from({length:12},(_,i)=>`${ano}-${String(i+1).padStart(2,'0')}`);
+  filtroEl.innerHTML=meses.map(m=>`<button class="mes-btn ${m===renMesFiltro?'active':''}" onclick="setRenMes('${m}')">${MESES[parseInt(m.split('-')[1])-1]}</button>`).join('');
   const el=document.getElementById('lista-ren');
-  const mes=mesAtual();
-  const fil=state.renda.filter(r=>(r.data||'').startsWith(mes));
-  if(!fil.length){el.innerHTML='<div class="empty"><div class="empty-icon">💵</div>Nenhuma entrada este mês</div>';return;}
-  // group by week
-  const weeks={};
-  fil.forEach(r=>{
-    const d=new Date(r.data+'T12:00:00');
-    const w=Math.ceil(d.getDate()/7);
-    const k=`Semana ${w}`;
-    if(!weeks[k])weeks[k]=[];
-    weeks[k].push(r);
-  });
-  el.innerHTML=Object.entries(weeks).map(([w,items])=>`
-    <div class="week-hdr">${w}</div>
-    ${items.map(r=>`<div class="item"><div class="item-row"><div class="item-dot" style="background:var(--ok)"></div><div class="item-info"><div class="item-name">${r.descricao||'Entrada'}</div><div class="item-meta">${formatDate(r.data)}</div></div><div class="item-right"><div class="item-val c-ok">${fmt(r.valor)}</div></div></div><div class="item-actions"><button class="btn-sm yellow" onclick="openModal('renda','${r.id}')">✏️ Editar</button><button class="btn-sm red" onclick="deletar('renda','${r.id}','${r.descricao||'entrada'}')">🗑</button></div></div>`).join('')}
-  `).join('');
+  const fil=state.renda.filter(r=>(r.data||'').startsWith(renMesFiltro));
+  if(!fil.length){el.innerHTML='<div class="empty"><div class="empty-icon">💵</div>Nenhuma entrada neste mês</div>';return;}
+  el.innerHTML=fil.sort((a,b)=>b.data.localeCompare(a.data)).map(r=>`<div class="item"><div class="item-row"><div class="item-dot" style="background:var(--ok)"></div><div class="item-info"><div class="item-name">${r.descricao||'Entrada'}</div><div class="item-meta">${formatDate(r.data)}</div></div><div class="item-right"><div class="item-val c-ok">${fmt(r.valor)}</div></div></div><div class="item-actions"><button class="btn-sm yellow" onclick="openModal('renda','${r.id}')">✏️ Editar</button><button class="btn-sm red" onclick="deletar('renda','${r.id}','${r.descricao||'entrada'}')">🗑</button></div></div>`).join('');
 }
+function setRenMes(m){renMesFiltro=m;renderRenda();}
 
 // ── RECORRENTES ────────────────────────────────────────────────────────────────
 function renderRecorrentes(){
